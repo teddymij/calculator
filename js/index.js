@@ -1,119 +1,127 @@
 'use strict';
 
-// TODO:1/ change the SCREEN CURRENT
-//  A : delete with AC 🆗
-//  A : power with ^
-//  A : pourcentage with %
-//  A : divide with /
-//  A : multiply with X
-//  A : sustract with -
-//  A : add with +
-//  A : equal with =
-//  A : delete all with
-//  A : float all with . 🆗
-
 const screenCurrent = document.querySelector('.screen-current');
 const screenPrevious = document.querySelector('.screen-previous');
 
 const ac = document.querySelector('#ac');
 const arrBtn = document.querySelectorAll('.buttons .btn');
 
-// null = aucune valeur saisi
-let a = null;
-let b = null;
-let currentOperation = null;
-let shouldResetScreen = false;
+// On utilise null pour indiquer qu'aucune valeur n'est encore saisie.
+let a = null,
+  b = null,
+  currentOperation = null,
+  shouldResetScreen = false;
 
 for (const btn of arrBtn) {
   btn.addEventListener('click', () => printScreen(btn));
 }
+
 function printScreen(btn) {
+  // Si une opération vient d'être effectuée, on efface l'écran courant pour la prochaine saisie
   if (shouldResetScreen) {
     screenCurrent.textContent = '';
     shouldResetScreen = false;
   }
 
+  // Si le bouton cliqué représente un nombre (on convertit explicitement en nombre)
   if (!isNaN(Number(btn.textContent))) {
+    // Si l'écran affiche "0", on le remplace
     if (screenCurrent.textContent === '0') {
       screenCurrent.textContent = '';
     }
     screenCurrent.textContent += btn.textContent;
   } else {
-    if (btn.id === 'period' && screenCurrent.textContent.indexOf('.') === -1)
+    // Gestion du point décimal
+    if (btn.id === 'period' && screenCurrent.textContent.indexOf('.') === -1) {
       screenCurrent.textContent += btn.textContent;
-    if (btn.id === 'ac') {
-      screenCurrent.textContent = '0';
     }
-    if (btn.id === 'delete-all') {
-      screenCurrent.textContent = '0';
-      screenPrevious.textContent = '0';
-      a = 0;
-      b = 0;
-    }
-    if (btn.id === 'equals') {
-      printPrevious('=');
-    }
-    // operation
-    if (btn.id === 'plus') {
-      printPrevious('+');
-    }
-    if (btn.id === 'minus') {
-      printPrevious('-');
-    }
-    if (btn.id === 'multiply') {
-      printPrevious('*');
-    }
-    if (btn.id === 'divide') {
-      printPrevious('/');
-    }
-    if (btn.id === 'percentage') {
-      printPrevious('%');
-    }
-    if (btn.id === 'hat') {
-      printPrevious('^');
-    }
-  }
-}
-function printPrevious(operation) {
-  screenPrevious.textContent += screenCurrent.textContent;
-  let result = 0;
+    // Réinitialisation (AC ou delete-all)
 
-  if (a === 0 && b === 0 && operation !== '=') {
-    a = screenCurrent.textContent;
-    screenCurrent.textContent = '';
-  } else if (a !== 0 && b === 0) {
-    b = screenCurrent.textContent;
-    result = transformer(Number(a), Number(b), operation);
-    a = result;
-    b = 0;
-    screenCurrent.textContent = result;
+    if (btn.id === 'ac' || btn.id === 'delete-all') {
+      clearAll();
+      return;
+    }
+    // Si c'est le bouton égal, on effectue le calcul
+    if (btn.id === 'equals') {
+      if (a !== null && currentOperation !== null) {
+        b = screenCurrent.textContent;
+        let result = transformer(Number(a), Number(b), currentOperation);
+        screenPrevious.textContent += b + ' =';
+        screenCurrent.textContent = result;
+        a = result;
+        currentOperation = null;
+        shouldResetScreen = true;
+      }
+      return;
+    }
+    // Si c'est un opérateur (plus, minus, multiply, divide, percentage, hat)
+    if (
+      btn.id === 'plus' ||
+      btn.id === 'minus' ||
+      btn.id === 'multiply' ||
+      btn.id === 'divide' ||
+      btn.id === 'percentage' ||
+      btn.id === 'hat'
+    ) {
+      // Si c'est la première opération, on stocke le premier nombre
+      if (a === null) {
+        a = screenCurrent.textContent;
+      } else if (currentOperation !== null) {
+        // Si une opération est déjà en cours, on effectue le calcul partiel
+        b = screenCurrent.textContent;
+        let result = transformer(Number(a), Number(b), currentOperation);
+        a = result;
+        screenCurrent.textContent = result;
+      }
+      // Définir l'opérateur courant en fonction du bouton cliqué
+      currentOperation =
+        btn.id === 'plus'
+          ? '+'
+          : btn.id === 'minus'
+          ? '-'
+          : btn.id === 'multiply'
+          ? '*'
+          : btn.id === 'divide'
+          ? '/'
+          : btn.id === 'percentage'
+          ? '%'
+          : btn.id === 'hat'
+          ? '^'
+          : null;
+      // Mettre à jour l'écran historique
+      screenPrevious.textContent = a + ' ' + currentOperation + ' ';
+      shouldResetScreen = true;
+    }
   }
-  if (operation !== '=') {
-    screenPrevious.textContent += operation;
-  }
-  console.log(`a = ${a} + b = ${b} = ${result}`);
 }
+
+function clearAll() {
+  screenCurrent.textContent = '0';
+  screenPrevious.textContent = '';
+  a = null;
+  b = null;
+  currentOperation = null;
+  shouldResetScreen = false;
+}
+
 function transformer(a, b, operation) {
   let result = 0;
   switch (operation) {
     case '+':
-      result = addition(a, b);
+      result = a + b;
       break;
     case '-':
-      result = substract(a, b);
+      result = a - b;
       break;
     case '/':
       if (b === 0) {
         result = 'Error';
       } else {
-        result = divide(a, b);
+        result = a / b;
       }
       break;
     case '*':
-      result = multiply(a, b);
-      break;
-    case '=':
-      result = a;
+      result = a * b;
       break;
     case '%':
       result = a * (b / 100);
