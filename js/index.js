@@ -3,7 +3,6 @@
 const screenCurrent = document.querySelector('.screen-current');
 const screenPrevious = document.querySelector('.screen-previous');
 
-const ac = document.querySelector('#ac');
 const arrBtn = document.querySelectorAll('.buttons .btn');
 
 // On utilise null pour indiquer qu'aucune valeur n'est encore saisie.
@@ -13,40 +12,62 @@ let a = null,
   shouldResetScreen = false;
 
 for (const btn of arrBtn) {
-  btn.addEventListener('click', () => printScreen(btn));
+  btn.addEventListener('click', () => printScreen(btn.textContent));
 }
+// ****************************
+// KEYBOARD EVENT LISTENER
+// ****************************
+document.addEventListener('keydown', function (event) {
+  let key = event.key;
+  if (!isNaN(Number(key)) && screenCurrent.textContent.length < 10) {
+    printScreen(key);
+  } else if (key === 'Enter') {
+    printScreen('=');
+  } else if (key === 'Backspace') {
+    deleteLastDigit();
+  } else if (key === 'Escape') {
+    printScreen('=');
+  } else if (['+', '-', '*', '/', '%', '^', '.'].includes(key)) {
+    printScreen(key);
+  }
+});
 
-function printScreen(btn) {
+function printScreen(value) {
+  console.log(value);
+
   // Si une opération vient d'être effectuée, on efface l'écran courant pour la prochaine saisie
   if (shouldResetScreen) {
-    screenCurrent.textContent = '';
+    screenCurrent.textContent = '0';
     shouldResetScreen = false;
   }
 
   // Si le bouton cliqué représente un nombre (on convertit explicitement en nombre)
-  if (!isNaN(Number(btn.textContent))) {
+  if (!isNaN(Number(value)) && screenCurrent.textContent.length < 16) {
     // Si l'écran affiche "0", on le remplace
     if (screenCurrent.textContent === '0') {
       screenCurrent.textContent = '';
     }
-    screenCurrent.textContent += btn.textContent;
+    screenCurrent.textContent += value;
   } else {
     // Gestion du point décimal
-    if (btn.id === 'period' && screenCurrent.textContent.indexOf('.') === -1) {
-      screenCurrent.textContent += btn.textContent;
+    if (value === '.' && screenCurrent.textContent.includes('.')) {
+      screenCurrent.textContent += value;
     }
     // Réinitialisation (AC ou delete-all)
 
-    if (btn.id === 'ac' || btn.id === 'delete-all') {
+    if (value === 'AC') {
       clearAll();
       return;
     }
-    // Si c'est le bouton égal, on effectue le calcul
-    if (btn.id === 'equals') {
+    if (value === 'C') {
+      deleteLastDigit();
+    }
+    if (value === '=') {
+      // Si c'est le bouton égal, on effectue le calcul
       if (a !== null && currentOperation !== null) {
         b = screenCurrent.textContent;
         let result = transformer(Number(a), Number(b), currentOperation);
-        screenPrevious.textContent += b + ' =';
+        screenPrevious.textContent = `${a} ${currentOperation} ${b} =`;
         screenCurrent.textContent = result;
         a = result;
         currentOperation = null;
@@ -55,14 +76,7 @@ function printScreen(btn) {
       return;
     }
     // Si c'est un opérateur (plus, minus, multiply, divide, percentage, hat)
-    if (
-      btn.id === 'plus' ||
-      btn.id === 'minus' ||
-      btn.id === 'multiply' ||
-      btn.id === 'divide' ||
-      btn.id === 'percentage' ||
-      btn.id === 'hat'
-    ) {
+    if (['+', '-', '*', '/', '%', '^'].includes(value)) {
       // Si c'est la première opération, on stocke le premier nombre
       if (a === null) {
         a = screenCurrent.textContent;
@@ -74,27 +88,19 @@ function printScreen(btn) {
         screenCurrent.textContent = result;
       }
       // Définir l'opérateur courant en fonction du bouton cliqué
-      currentOperation =
-        btn.id === 'plus'
-          ? '+'
-          : btn.id === 'minus'
-          ? '-'
-          : btn.id === 'multiply'
-          ? '*'
-          : btn.id === 'divide'
-          ? '/'
-          : btn.id === 'percentage'
-          ? '%'
-          : btn.id === 'hat'
-          ? '^'
-          : null;
+      currentOperation = value;
       // Mettre à jour l'écran historique
-      screenPrevious.textContent = a + ' ' + currentOperation + ' ';
+      screenPrevious.textContent = `${a} ${currentOperation}`;
       shouldResetScreen = true;
     }
   }
 }
-
+function deleteLastDigit() {
+  screenCurrent.textContent = screenCurrent.textContent.slice(0, -1);
+  if (screenCurrent.textContent === '') {
+    screenCurrent.textContent = '0';
+  }
+}
 function clearAll() {
   screenCurrent.textContent = '0';
   screenPrevious.textContent = '';
