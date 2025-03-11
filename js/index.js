@@ -11,7 +11,9 @@ let a = null,
   b = null,
   currentOperation = null,
   shouldResetScreen = false;
-
+// ****************************
+// CLICK EVENT LISTENER
+// ****************************
 for (const btn of arrBtn) {
   btn.addEventListener('click', () => handleInput(btn.textContent));
 }
@@ -26,6 +28,9 @@ document.addEventListener('keydown', event => {
   else if (key === 'Backspace') deleteLastDigit();
 });
 
+// ****************************
+// FUNCTION
+// ****************************
 function handleInput(value) {
   // Si une opération vient d'être effectuée, on efface l'écran courant pour la prochaine saisie
   if (shouldResetScreen) resetScreen();
