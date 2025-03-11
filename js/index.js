@@ -1,8 +1,9 @@
 'use strict';
 
+// BUG : deux  =
+// BUG : exponentiel si chiffre élèvé
 const screenCurrent = document.querySelector('.screen-current');
 const screenPrevious = document.querySelector('.screen-previous');
-
 const arrBtn = document.querySelectorAll('.buttons .btn');
 
 // On utilise null pour indiquer qu'aucune valeur n'est encore saisie.
@@ -12,87 +13,67 @@ let a = null,
   shouldResetScreen = false;
 
 for (const btn of arrBtn) {
-  btn.addEventListener('click', () => printScreen(btn.textContent));
+  btn.addEventListener('click', () => handleInput(btn.textContent));
 }
 // ****************************
 // KEYBOARD EVENT LISTENER
 // ****************************
-document.addEventListener('keydown', function (event) {
-  let key = event.key;
-  if (!isNaN(Number(key)) && screenCurrent.textContent.length < 10) {
-    printScreen(key);
-  } else if (key === 'Enter') {
-    printScreen('=');
-  } else if (key === 'Backspace') {
-    deleteLastDigit();
-  } else if (key === 'Escape') {
-    printScreen('=');
-  } else if (['+', '-', '*', '/', '%', '^', '.'].includes(key)) {
-    printScreen(key);
-  }
+document.addEventListener('keydown', event => {
+  const key = event.key;
+  if (!isNaN(key) && screenCurrent.textContent.length < 10) handleInput(key);
+  else if (['+', '-', '*', '/', '%', '^', '.'].includes(key)) handleInput(key);
+  else if (key === 'Enter' || key === 'Escape') handleInput('=');
+  else if (key === 'Backspace') deleteLastDigit();
 });
 
-function printScreen(value) {
-  console.log(value);
-
+function handleInput(value) {
   // Si une opération vient d'être effectuée, on efface l'écran courant pour la prochaine saisie
-  if (shouldResetScreen) {
-    screenCurrent.textContent = '0';
-    shouldResetScreen = false;
-  }
+  if (shouldResetScreen) resetScreen();
 
   // Si le bouton cliqué représente un nombre (on convertit explicitement en nombre)
-  if (!isNaN(Number(value)) && screenCurrent.textContent.length < 16) {
-    // Si l'écran affiche "0", on le remplace
-    if (screenCurrent.textContent === '0') {
-      screenCurrent.textContent = '';
-    }
+  if (!isNaN(Number(value)) && screenCurrent.textContent.length < 10) {
+    screenCurrent.textContent =
+      screenCurrent.textContent === '0'
+        ? value
+        : screenCurrent.textContent + value;
+  } else if (value === '.' && screenCurrent.textContent.includes('.')) {
     screenCurrent.textContent += value;
-  } else {
-    // Gestion du point décimal
-    if (value === '.' && screenCurrent.textContent.includes('.')) {
-      screenCurrent.textContent += value;
-    }
-    // Réinitialisation (AC ou delete-all)
+  } else if (value === 'AC') {
+    clearAll();
+  } else if (value === 'C') {
+    deleteLastDigit();
+  } else if (value === '=') {
+    computeResult();
+  } else if (['+', '-', '*', '/', '%', '^'].includes(value)) {
+    setOperation(value);
+  }
+}
+function resetScreen() {
+  screenCurrent.textContent = '0';
+  shouldResetScreen = false;
+}
 
-    if (value === 'AC') {
-      clearAll();
-      return;
-    }
-    if (value === 'C') {
-      deleteLastDigit();
-    }
-    if (value === '=') {
-      // Si c'est le bouton égal, on effectue le calcul
-      if (a !== null && currentOperation !== null) {
-        b = screenCurrent.textContent;
-        let result = transformer(Number(a), Number(b), currentOperation);
-        screenPrevious.textContent = `${a} ${currentOperation} ${b} =`;
-        screenCurrent.textContent = result;
-        a = result;
-        currentOperation = null;
-        shouldResetScreen = true;
-      }
-      return;
-    }
-    // Si c'est un opérateur (plus, minus, multiply, divide, percentage, hat)
-    if (['+', '-', '*', '/', '%', '^'].includes(value)) {
-      // Si c'est la première opération, on stocke le premier nombre
-      if (a === null) {
-        a = screenCurrent.textContent;
-      } else if (currentOperation !== null) {
-        // Si une opération est déjà en cours, on effectue le calcul partiel
-        b = screenCurrent.textContent;
-        let result = transformer(Number(a), Number(b), currentOperation);
-        a = result;
-        screenCurrent.textContent = result;
-      }
-      // Définir l'opérateur courant en fonction du bouton cliqué
-      currentOperation = value;
-      // Mettre à jour l'écran historique
-      screenPrevious.textContent = `${a} ${currentOperation}`;
-      shouldResetScreen = true;
-    }
+function setOperation(operator) {
+  if (a === null) {
+    a = screenCurrent.textContent;
+  } else if (currentOperation) {
+    a = computeResult();
+  }
+  currentOperation = operator;
+  screenPrevious.textContent = `${a} ${operator}`;
+  shouldResetScreen = true;
+}
+
+function computeResult() {
+  if (a !== null && currentOperation !== null) {
+    b = screenCurrent.textContent;
+    let result = calculate(Number(a), Number(b), currentOperation);
+    screenPrevious.textContent = `${a} ${currentOperation} ${b} =`;
+    screenCurrent.textContent = result;
+    a = result;
+    currentOperation = null;
+    shouldResetScreen = true;
+    return result;
   }
 }
 function deleteLastDigit() {
@@ -104,39 +85,21 @@ function deleteLastDigit() {
 function clearAll() {
   screenCurrent.textContent = '0';
   screenPrevious.textContent = '';
-  a = null;
-  b = null;
-  currentOperation = null;
+  a = b = currentOperation = null;
   shouldResetScreen = false;
 }
 
-function transformer(a, b, operation) {
-  let result = 0;
-  switch (operation) {
-    case '+':
-      result = a + b;
-      break;
-    case '-':
-      result = a - b;
-      break;
-    case '/':
-      if (b === 0) {
-        result = 'Error';
-      } else {
-        result = a / b;
-      }
-      break;
-    case '*':
-      result = a * b;
-      break;
-    case '%':
-      result = a * (b / 100);
-      break;
-    case '^':
-      result = Math.pow(a, b);
-      break;
-    default:
-      result = 'Unknown operation';
-  }
-  return result;
+function calculate(a, b, operation) {
+  if (operation === '/' && b === 0) return 'Error';
+  const operations = {
+    '+': (a, b) => a + b,
+    '-': (a, b) => a - b,
+    '*': (a, b) => a * b,
+    '/': (a, b) => a / b,
+    '%': (a, b) => a * (b / 100),
+    '^': (a, b) => Math.pow(a, b),
+  };
+  return operations[operation]
+    ? operations[operation](a, b).toString().slice(0, 10)
+    : 'Error';
 }
